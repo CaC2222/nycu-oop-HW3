@@ -385,39 +385,74 @@ void GRAPH_SYSTEM::performOperation(GRAPH_NODE* node) {
 
 void GRAPH_SYSTEM::deleteEdge( int edgeID )
 {
-    //GRAPH_EDGE *e = &mEdgeArr_Pool[ edgeID ];
-    //int dynamicID = e->dynamicID;
+    GRAPH_EDGE *e = &mEdgeArr_Pool[ edgeID ];
+    int dynamicID = e->dynamicID;
 
     //
     // modify and add your code heres
     //
+    removeEdgeFromNode(e, e->nodeID[0]);
+    removeEdgeFromNode(e, e->nodeID[1]);
 
+    int lastActiveIndex = mCurNumOfActiveEdges - 1;
+    if (dynamicID != lastActiveIndex) {
+        int lastEdgeID = mActiveEdgeArr[lastActiveIndex]; 
+
+        mActiveEdgeArr[dynamicID] = lastEdgeID;     
+        mEdgeArr_Pool[lastEdgeID].dynamicID = dynamicID; 
+    }
+    mCurNumOfActiveEdges--;
+
+    mFreeEdgeArr[mCurNumOfFreeEdges] = edgeID;
+    mCurNumOfFreeEdges++;
 }
 
 void GRAPH_SYSTEM::removeEdgeFromNode( const GRAPH_EDGE *e, int nodeID )
 {
-    //GRAPH_NODE *n = &mNodeArr_Pool[ nodeID ];
+    GRAPH_NODE *n = &mNodeArr_Pool[ nodeID ];
     //
     // modify and add your code heres
     //
+    for (int i = 0; i < n->edgeID.size(); ++i) {
+        if (n->edgeID[i] == e->id) {
+            n->edgeID.erase(n->edgeID.begin() + i);
+
+        }
+    }
 
 }
 void GRAPH_SYSTEM::deleteEdgesOfNode( int nodeID )
 {
-   // GRAPH_NODE *n  = &mNodeArr_Pool[ nodeID ];
+    GRAPH_NODE *n  = &mNodeArr_Pool[ nodeID ];
     //
     // modify and add your code heres
     //
-
+    while (!n->edgeID.empty()) {
+        int targetEdgeID = n->edgeID[0];
+        deleteEdge(targetEdgeID);
+    }
 }
 
 void GRAPH_SYSTEM::deleteNode( int nodeID ) {
-    //if ( mCurNumOfActiveNodes <= 0 ) return;
-    //GRAPH_NODE *n = &mNodeArr_Pool[ nodeID ];
+    if ( mCurNumOfActiveNodes <= 0 ) return;
+    GRAPH_NODE *n = &mNodeArr_Pool[ nodeID ];
     //
     // modify and add your code heres
     //
+    int targetDynamicID = n->dynamicID;
+    deleteEdgesOfNode(nodeID);
+    int lastActiveIndex = mCurNumOfActiveNodes - 1;
 
+    if (targetDynamicID != lastActiveIndex) {
+        int lastNodeID = mActiveNodeArr[lastActiveIndex]; 
+
+        mActiveNodeArr[targetDynamicID] = lastNodeID;     
+        mNodeArr_Pool[lastNodeID].dynamicID = targetDynamicID; 
+    }
+    mCurNumOfActiveNodes--;
+
+    mFreeNodeArr[mCurNumOfFreeNodes] = nodeID;
+    mFreeNodeArr++;
 }
 
 void GRAPH_SYSTEM::deleteSelectedNode(  ) {
@@ -425,6 +460,8 @@ void GRAPH_SYSTEM::deleteSelectedNode(  ) {
     //
     // modify and add your code heres
     //
+    deleteNode(mSelectedNode->id);
+    mSelectedNode = 0;
 }
 
 bool GRAPH_SYSTEM::isSelectedNode( ) const
