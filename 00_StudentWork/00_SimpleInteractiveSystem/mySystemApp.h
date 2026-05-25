@@ -1,7 +1,7 @@
 //********************************************
-// Student Name			:
-// Student ID			:
-// Student Email Address:
+// Student Name			: ³¯¿o¸©
+// Student ID			: 114550194
+// Student Email Address: cys.cs14@nycu.edu.tw
 //********************************************
 //
 // Instructor: Sai-Keung WONG

@@ -1,7 +1,7 @@
 //********************************************
-// Student Name			:
-// Student ID			:
-// Student Email Address:
+// Student Name			: ³¯¿o¸©
+// Student ID			: 114550194
+// Student Email Address: cys.cs14@nycu.edu.tw
 //********************************************
 //
 //
@@ -147,14 +147,21 @@ void GRAPH_SYSTEM::createDefaultGraph( )
     float offset_z = 15.;
 
     int n_0 = addNode(offset_x + 0.0, 0.0, offset_z + 0.0 );
-    cout << "n_0:"<< n_0 << endl;
+    //cout << "n_0:"<< n_0 << endl;
 
     //
     // modify and add your code heres
     //
+    int n_1 = addNode(offset_x + 30.0, 0.0, offset_z + 0.0);
+    int n_2 = addNode(offset_x + 30.0, 0.0, offset_z + 30.0);
+    int n_3 = addNode(offset_x + 0.0, 0.0, offset_z + 30.0);
+    cout << "n_0:" << n_0 << " n_1:" << n_1 << " n_2:" << n_2 << " n_3:" << n_3 << endl;
 
-    //addEdge( n_0, n_1 );
-    //addEdge( n_1, n_2 );
+
+    addEdge(n_0, n_1);
+    addEdge(n_1, n_2);
+    addEdge(n_2, n_3);
+    addEdge(n_3, n_0);
 
 }
 
@@ -226,12 +233,22 @@ void GRAPH_SYSTEM::createNet_RadicalCircular( int n ) {
 //
 int GRAPH_SYSTEM::addNode( float x, float y, float z, float r )
 {
-    //GRAPH_NODE *g;
-    //g = getFreeNode( );
+    GRAPH_NODE *g;
+    g = getFreeNode( );
     //
     // modify and add your code heres
     //
-    return -1;
+    if (g == nullptr) return -1;
+    g->p = vector3(x, y, z);
+    g->r = r;
+
+    g->edgeID.clear();
+    g->visited = false;
+    g->path_parent = nullptr;
+    g->depth = SYS_CONSTANTS::max_int;
+    g->path_cost = SYS_CONSTANTS::max_double;
+
+    return g->id;
 }
 
 //
@@ -240,13 +257,21 @@ int GRAPH_SYSTEM::addNode( float x, float y, float z, float r )
 //
 int GRAPH_SYSTEM::addEdge( int nodeID_0, int nodeID_1 )
 {
-    //GRAPH_EDGE *e;
-    //e = getFreeEdge( );
+    GRAPH_EDGE *e;
+    e = getFreeEdge( );
     //
     // modify and add your code heres
     //
+    if (nodeID_0 == nodeID_1) return -1;
+    if (e == nullptr) return -1;
 
-    return -1;
+    e->nodeID[0] = nodeID_0;
+    e->nodeID[1] = nodeID_1;
+
+    mNodeArr_Pool[nodeID_0].edgeID.push_back(e->id);
+    mNodeArr_Pool[nodeID_1].edgeID.push_back(e->id);
+
+    return e->id;
 }
 
 void GRAPH_SYSTEM::askForInput( )
@@ -275,10 +300,26 @@ void GRAPH_SYSTEM::askForInput( )
 GRAPH_NODE *GRAPH_SYSTEM::findNearestNode( double x, double z, double &cur_distance2 ) const
 {
     GRAPH_NODE *n = nullptr;
-    //cur_distance2 = -1.0;
+    cur_distance2 = -1.0;
     //
     // modify and add your code heres
     //
+    for (int i = 0; i < mCurNumOfActiveNodes; i++) {
+        int nodeID = mActiveNodeArr[i];
+        GRAPH_NODE* current_node = &mNodeArr_Pool[nodeID];
+
+        double dx = current_node->p.x - x;
+        double dz = current_node->p.z - z;
+        double dist2 = dx * dx + dz * dz;
+        if (i == 0) {
+            cur_distance2 = dist2;
+            n = current_node;
+        }
+        else if (dist2 < cur_distance2) {
+            cur_distance2 = dist2;
+            n = current_node;
+        }
+    }
     return n;
 }
 
