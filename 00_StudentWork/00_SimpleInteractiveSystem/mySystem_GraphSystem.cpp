@@ -317,6 +317,8 @@ void GRAPH_SYSTEM::createNet_RadicalCircular( int n ) {
     //
     int centerID = addNode(offset_x, 0.0f, offset_z);
     int peripheralStartID = -1;
+    const float PI = 3.14159265358979323846f;
+
     for (int i = 0; i < n; ++i) {
         float angle = i * (2.0f * PI / n);
         float x = offset_x + r * cos(angle);
