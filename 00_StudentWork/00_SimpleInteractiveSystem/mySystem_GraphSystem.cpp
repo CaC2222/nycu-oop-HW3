@@ -154,17 +154,14 @@ void GRAPH_SYSTEM::createDefaultGraph( )
     //
     // modify and add your code heres
     //
-    int n_1 = addNode(offset_x + 30.0, 0.0, offset_z + 0.0);
-    int n_2 = addNode(offset_x + 30.0, 0.0, offset_z + 30.0);
-    int n_3 = addNode(offset_x + 0.0, 0.0, offset_z + 30.0);
-    cout << "n_0:" << n_0 << " n_1:" << n_1 << " n_2:" << n_2 << " n_3:" << n_3 << endl;
-
+    int n_1 = addNode(offset_x + 5.0, 0.0, offset_z + 0.0);
+    int n_2 = addNode(offset_x + 0.0, 0.0, offset_z + 5.0);
+    
+    cout << "n_0:" << n_0 << " n_1:" << n_1 << " n_2:" << n_2 <<  endl;
 
     addEdge(n_0, n_1);
     addEdge(n_1, n_2);
-    addEdge(n_2, n_3);
-    addEdge(n_3, n_0);
-
+    
 }
 
 void GRAPH_SYSTEM::createRandomGraph_DoubleCircles(int n)
@@ -181,39 +178,59 @@ void GRAPH_SYSTEM::createRandomGraph_DoubleCircles(int n)
     //
     // modify and add your code heres
     //
-    if (n % 2 != 0) n++;
-    int n2 = n / 2; 
+    float R = r + d;
+    
     const float PI = 3.14159265358979323846f;
 
-    int innerStartID = -1;
-    int outerStartID = -1;
+    int* innerIDs = new int[n];
+    int* outerIDs = new int[n];
 
-    for (int i = 0; i < n2; ++i) {
-        float angle = i * (2.0f * PI / n2);
+    for (int i = 0; i < n; ++i) {
+        float angle = i * (2.0f * PI / n);
         float x = offset_x + r * cos(angle);
         float z = offset_z + r * sin(angle);
-        int id = addNode(x, 0.0f, z);
-        if (i == 0) innerStartID = id;
+        innerIDs[i] = addNode(x, 0.0f, z);
     }
-
     float outer_r = r + d;
-    for (int i = 0; i < n2; ++i) {
-        float angle = i * (2.0f * PI / n2);
+    for (int i = 0; i < n; ++i) {
+        
+        float angle = i * (2.0f * PI / n) + (PI / n);
         float x = offset_x + outer_r * cos(angle);
         float z = offset_z + outer_r * sin(angle);
-        int id = addNode(x, 0.0f, z);
-        if (i == 0) outerStartID = id;
+        outerIDs[i] = addNode(x, 0.0f, z);
     }
-    for (int i = 0; i < n2; ++i) {
-        int currInner = innerStartID + i;
-        int nextInner = innerStartID + ((i + 1) % n2);
-        int currOuter = outerStartID + i;
-        int nextOuter = outerStartID + ((i + 1) % n2);
 
-        addEdge(currInner, nextInner); 
-        addEdge(currOuter, nextOuter); 
-        addEdge(currInner, currOuter); 
+    float max_delta_angle = acos(r / R);
+    for (int i = 0; i < n; ++i) {
+        float inner_angle = i * (2.0f * PI / n);
+
+        std::vector<int> validOuterCandidates;
+
+        for (int j = 0; j < n; ++j) {
+            float outer_angle = j * (2.0f * PI / n);
+
+            float delta_angle = fabs(outer_angle - inner_angle);
+            if (delta_angle > PI) {
+                delta_angle = (2.0f * PI) - delta_angle;
+            }
+            if (delta_angle > max_delta_angle) {
+                continue;
+            }
+            validOuterCandidates.push_back(outerIDs[j]);
+        }
+
+        if (!validOuterCandidates.empty() && innerIDs[i] != -1) {
+            int randomIndex = rand() % validOuterCandidates.size();
+            int chosenOuterID = validOuterCandidates[randomIndex];
+
+            if (chosenOuterID != -1) {
+                addEdge(innerIDs[i], chosenOuterID);
+            }
+        }
     }
+
+    delete[] innerIDs;
+    delete[] outerIDs;
 }
 
 void GRAPH_SYSTEM::createNet_Circular( int n, int num_layers )
@@ -231,77 +248,102 @@ void GRAPH_SYSTEM::createNet_Circular( int n, int num_layers )
     // modify and add your code heres
     //
     const float PI = 3.14159265358979323846f;
-    int* layerStartID = new int[num_layers];
+        
+    int** gridIDs = new int* [num_layers+1];
+    for (int i = 0; i < num_layers+1; ++i) {
+        gridIDs[i] = new int[n];
+    }
 
-    for (int layer = 0; layer < num_layers; ++layer) {
-        float current_r = r + layer * d; 
+    for (int layer = 0; layer < num_layers+1; ++layer) {
+        float current_r = r + layer * d;
 
         for (int i = 0; i < n; ++i) {
             float angle = i * (2.0f * PI / n);
             float x = offset_x + current_r * cos(angle);
             float z = offset_z + current_r * sin(angle);
-            int id = addNode(x, 0.0f, z);
 
-            if (i == 0) layerStartID[layer] = id; 
+            gridIDs[layer][i] = addNode(x, 0.0f, z);
         }
     }
-    for (int layer = 0; layer < num_layers; ++layer) {
-        int startID = layerStartID[layer];
-
+    for (int layer = 0; layer < num_layers+1; ++layer) {
         for (int i = 0; i < n; ++i) {
-            int curr = startID + i;
-            int next = startID + ((i + 1) % n);
+            int curr = gridIDs[layer][i];
+            if (layer < num_layers) {
+                int next = gridIDs[layer][(i + 1) % n]; 
+                if (curr != -1 && next != -1) {
+                    addEdge(curr, next);
+                }
+            }
 
-            addEdge(curr, next);
-
-            if (layer < num_layers - 1) {
-                int nextLayerCurr = layerStartID[layer + 1] + i;
-                addEdge(curr, nextLayerCurr);
+            if (layer < num_layers) {
+                int nextLayerCurr = gridIDs[layer + 1][i];
+                if (curr != -1 && nextLayerCurr != -1) {
+                    addEdge(curr, nextLayerCurr);
+                }
             }
         }
     }
 
-    delete[] layerStartID;
+    for (int i = 0; i < num_layers+1; ++i) {
+        delete[] gridIDs[i];
+    }
+    delete[] gridIDs;
 
 }
-void GRAPH_SYSTEM::createNet_Square( int n, int num_layers )
+void GRAPH_SYSTEM::createNet_Square(int n, int num_layers)
 {
-    reset( );
+    reset();
 
     float dx = 5.0;
     float dz = 5.0;
-    float r = 5; // radius
-    float d = 5; // layer distance 
     float offset_x = 5.;
     float offset_z = 5.;
-    //
-    // modify and add your code heres
-    //
-    int startID = -1;
-    for (int row = 0; row < num_layers; ++row) {
-        for (int col = 0; col < n; ++col) {
-            float x = offset_x + col * dx;
-            float z = offset_z + row * dz;
-            int id = addNode(x, 0.0f, z);
-            if (row == 0 && col == 0) startID = id;
-        }
-    }
-    for (int row = 0; row < num_layers; ++row) {
-        for (int col = 0; col < n; ++col) {
-            int currID = startID + (row * n + col);
 
-            if (col < n - 1) {
-                int rightID = currID + 1;
-                addEdge(currID, rightID);
-            }
-            
-            if (row < num_layers - 1) {
-                int downID = currID + n;
-                addEdge(currID, downID);
+    int total_dim = n + 2 * num_layers - 2;
+
+    int** gridIDs = new int* [total_dim];
+    for (int i = 0; i < total_dim; ++i) {
+        gridIDs[i] = new int[total_dim];
+        for (int j = 0; j < total_dim; ++j) gridIDs[i][j] = -1;
+    }
+
+    for (int row = 0; row < total_dim; ++row) {
+        for (int col = 0; col < total_dim; ++col) {
+
+            if (row < num_layers || row >= total_dim - num_layers ||
+                col < num_layers || col >= total_dim - num_layers){
+                float x = offset_x + col * dx;
+                float z = offset_z + row * dz;
+                gridIDs[row][col] = addNode(x, 0.0f, z);
             }
         }
     }
 
+    for (int row = 0; row < total_dim; ++row) {
+        for (int col = 0; col < total_dim; ++col) {
+            int currID = gridIDs[row][col];
+            if (currID == -1) continue;
+
+            if (col < total_dim - 1) {
+                int rightID = gridIDs[row][col + 1];
+                if (rightID != -1) {
+                    addEdge(currID, rightID);
+                }
+            }
+
+            if (row < total_dim - 1) {
+                int downID = gridIDs[row + 1][col];
+                if (downID != -1) {
+                    addEdge(currID, downID);
+                }
+            }
+        }
+    }
+
+    for (int i = 0; i < n; ++i) {
+        delete[] gridIDs[i];
+    }
+    delete[] gridIDs;
 }
 void GRAPH_SYSTEM::createNet_RadicalCircular( int n ) {
 
@@ -316,26 +358,19 @@ void GRAPH_SYSTEM::createNet_RadicalCircular( int n ) {
     // modify and add your code heres
     //
     int centerID = addNode(offset_x, 0.0f, offset_z);
-    int peripheralStartID = -1;
+    int* peripheralIDs = new int[n];
     const float PI = 3.14159265358979323846f;
 
     for (int i = 0; i < n; ++i) {
         float angle = i * (2.0f * PI / n);
         float x = offset_x + r * cos(angle);
         float z = offset_z + r * sin(angle);
-        int id = addNode(x, 0.0f, z);
 
-        if (i == 0) peripheralStartID = id;
+        peripheralIDs[i] = addNode(x, 0.0f, z);
     }
     for (int i = 0; i < n; ++i) {
-        int currPeripheral = peripheralStartID + i;
-        int nextPeripheral = peripheralStartID + ((i + 1) % n);
-
-        // 中心點連向外圍點 (車輪輻條)
+        int currPeripheral = peripheralIDs[i];
         addEdge(centerID, currPeripheral);
-
-        // 外圍點彼此相連 (車輪外胎)
-        addEdge(currPeripheral, nextPeripheral);
     }
 }
 
@@ -506,14 +541,15 @@ void GRAPH_SYSTEM::deleteEdge( int edgeID )
     removeEdgeFromNode(e, e->nodeID[0]);
     removeEdgeFromNode(e, e->nodeID[1]);
 
-    int lastActiveIndex = mCurNumOfActiveEdges - 1;
+    mCurNumOfActiveEdges--;
+    int lastActiveIndex = mCurNumOfActiveEdges;
     if (dynamicID != lastActiveIndex) {
         int lastEdgeID = mActiveEdgeArr[lastActiveIndex]; 
 
         mActiveEdgeArr[dynamicID] = lastEdgeID;     
         mEdgeArr_Pool[lastEdgeID].dynamicID = dynamicID; 
     }
-    mCurNumOfActiveEdges--;
+    
 
     mFreeEdgeArr[mCurNumOfFreeEdges] = edgeID;
     mCurNumOfFreeEdges++;
@@ -528,7 +564,7 @@ void GRAPH_SYSTEM::removeEdgeFromNode( const GRAPH_EDGE *e, int nodeID )
     for (int i = 0; i < n->edgeID.size(); ++i) {
         if (n->edgeID[i] == e->id) {
             n->edgeID.erase(n->edgeID.begin() + i);
-
+            break;
         }
     }
 
@@ -564,7 +600,7 @@ void GRAPH_SYSTEM::deleteNode( int nodeID ) {
     mCurNumOfActiveNodes--;
 
     mFreeNodeArr[mCurNumOfFreeNodes] = nodeID;
-    mFreeNodeArr++;
+    mCurNumOfFreeNodes++;
 }
 
 void GRAPH_SYSTEM::deleteSelectedNode(  ) {
@@ -671,9 +707,7 @@ void GRAPH_SYSTEM::computeDepthOfAllNodesFromSelectedNode(GRAPH_NODE* node, int 
         // modify and add your code heres
         // 
      //}   
-    if (depth > mMaxNodeDepth) {
-        mMaxNodeDepth = depth;
-    }
+    
     for (int i = 0; i < node->edgeID.size(); ++i) {
         int edgeID = node->edgeID[i];
         GRAPH_EDGE* e = &mEdgeArr_Pool[edgeID];
@@ -713,17 +747,19 @@ void GRAPH_SYSTEM::computeDepthOfAllNodesFromSelectedNode()
 
     // Determine the mMaxNodeDepth
     int numNodes = getNumOfNodes();
+    int currentMax = 0;
+
     for (int i = 0; i < numNodes; ++i) {
-        //
-        // modify and add your code heres
-        //
         int nodeID = mActiveNodeArr[i];
         GRAPH_NODE* n = &mNodeArr_Pool[nodeID];
 
-        if (n->depth != SYS_CONSTANTS::max_int && n->depth > mMaxNodeDepth) {
-            mMaxNodeDepth = n->depth;
+        if (n->visited && n->depth != SYS_CONSTANTS::max_int) {
+            if (n->depth > currentMax) {
+                currentMax = n->depth;
+            }
         }
     }
+    mMaxNodeDepth = currentMax;
 }
 
 // This member function is not used.
@@ -814,6 +850,7 @@ void GRAPH_SYSTEM::computeShortestPath()
     if (mStartNode == nullptr || mDestinationNode == nullptr) return;
 
     mStartNode->path_cost = 0.0;
+    mStartNode->visited = true;
     computeShortestPath(mStartNode);
 }
 
